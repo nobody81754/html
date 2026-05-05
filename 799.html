@@ -1,0 +1,314 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Obby</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152/build/three.min.js"></script>
+<script>
+/* ---------- scene ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+/* ---------- light ---------- */
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+sun.position.set(5, 10, 5);
+scene.add(sun);
+
+/* ---------- player ---------- */
+const playerSize = 1.2;
+const player = new THREE.Mesh(
+  new THREE.SphereGeometry(playerSize / 2, 32, 32),
+  new THREE.MeshStandardMaterial({ color: 0x00ff23 })
+);
+
+/* ---------- start = 0, 14, 18 ---------- */
+player.position.set(0, 14, 18);
+scene.add(player);
+
+/* ---------- respawn machinee ---------- */
+let respawnPosition = new THREE.Vector3(0, 4, 18);
+
+/* ---------- raycaster ---------- */
+const raycaster = new THREE.Raycaster();
+
+/* ---------- platforms ---------- */
+const platforms = [];
+
+function makePlatform(x, y, z, w, h, d, c) {
+  const p = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: c })
+  );
+  p.position.set(x, y, -z);
+  p.userData = { isKillBrick: false };
+  scene.add(p);
+  platforms.push(p);
+}
+
+function makeKillBrick(x, y, z, w, h, d) {
+  const p = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: "red" })
+  );
+  p.position.set(x, y, -z);
+  p.userData = { isKillBrick: true };
+  scene.add(p);
+  platforms.push(p);
+}
+
+function makeCheckpoint(x, y, z, w, h, d) {
+  const p = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: 0x00ffff })
+  );
+  p.position.set(x, y, -z);
+  p.userData = { isCheckpoint: true, activated: false };
+  scene.add(p);
+  platforms.push(p);
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + " ";
+    const metrics = ctx.measureText(testLine);
+    const testWidth = metrics.width;
+
+    if (testWidth > maxWidth && n > 0) {
+      lines.push(line);
+      line = words[n] + " ";
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line);
+  return lines;
+}
+
+function makeSign(x, y, z, w, h, text, rotDeg = 0, imageUrl = null) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+
+  function drawContent(img = null) {
+    // background
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // draw image if provided
+    if (img) {
+      const imgHeight = canvas.height * 0.6;
+      const imgWidth = canvas.width * 0.8;
+      ctx.drawImage(
+        img,
+        (canvas.width - imgWidth) / 2,
+        10,
+        imgWidth,
+        imgHeight
+      );
+    }
+
+    // text
+    ctx.fillStyle = "white";
+    ctx.font = "26px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const maxWidth = canvas.width - 20;
+    const lineHeight = 20;
+
+    const lines = wrapText(ctx, text, maxWidth);
+
+    // push text lower if image exists
+    const textStartY = img ? canvas.height * 0.75 : canvas.height / 2;
+    const startY = textStartY - (lines.length * lineHeight) / 2;
+
+    lines.forEach((line, i) => {
+      ctx.fillText(line.trim(), canvas.width / 2, startY + i * lineHeight);
+    });
+
+    // create mesh AFTER drawing
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide
+      })
+    );
+
+    sign.position.set(x, y + h / 2, -z);
+    sign.rotation.y = THREE.MathUtils.degToRad(rotDeg);
+    scene.add(sign);
+  }
+
+  if (imageUrl) {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // avoid CORS issues
+    img.onload = () => drawContent(img);
+    img.src = imageUrl;
+  } else {
+    drawContent();
+  }
+}
+
+/* ---------- map objects ---------- */
+makePlatform(0, 0, -7.5, 25, 1, 25, 0xc60106);
+makeSign(0, 6.5, 4, 6, 2, "just simply walk around it😂😂😂");
+makeSign(-10, 0, 4, 10, 10, '', 0, 'https://cdn.jsdelivr.net/gh/nobody81754/covers@main/799.png');
+makeSign(10, 0, 4, 10, 10, '', 0, 'https://cdn.jsdelivr.net/gh/nobody81754/covers@main/799.png');
+makeSign(0, 0, 30, 10, 10, '', 0, 'https://cdn.jsdelivr.net/gh/nobody81754/covers@main/799.png');
+
+
+
+/* ---------- adrian ---------- */
+makePlatform(0, 0, 15, 5, 1, 20, 0xc60106);
+makePlatform(0, 5, 15, 5, 10, 1, 0xc60106);
+
+
+/* ---------- input ---------- */
+const keys = {};
+addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+/* ---------- physics ---------- */
+let velocityY = 0;
+const gravity = -0.03;
+const speed = 0.15;
+const jumpPower = 0.65;
+let stop = 1;
+
+
+function updatePlayer() {
+  const moveStep = speed;
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  dir.y = 0;
+  dir.normalize();
+
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir);
+
+  function canMove(offset) {
+    const origin = player.position.clone();
+    origin.y += playerSize / 2;
+    raycaster.set(origin, offset.clone().normalize());
+    const hits = raycaster.intersectObjects(platforms, false);
+    return !(hits.length && hits[0].distance < moveStep + 0.05);
+  }
+
+  if (keys.w && canMove(dir)) player.position.add(dir.clone().multiplyScalar(moveStep));
+  if (keys.s && canMove(dir.clone().negate())) player.position.add(dir.clone().multiplyScalar(-moveStep));
+  if (keys.a && canMove(right)) player.position.add(right.clone().multiplyScalar(moveStep));
+  if (keys.d && canMove(right.clone().negate())) player.position.add(right.clone().multiplyScalar(-moveStep));
+
+  velocityY += gravity;
+  player.position.y += velocityY;
+
+  const offsets = [
+    new THREE.Vector3(0,0,0),
+    new THREE.Vector3(0.5,0,0),
+    new THREE.Vector3(-0.5,0,0),
+    new THREE.Vector3(0,0,0.5),
+    new THREE.Vector3(0,0,-0.5)
+  ];
+
+  let grounded = false;
+  for (const o of offsets) {
+    const origin = player.position.clone().add(o);
+    raycaster.set(origin, new THREE.Vector3(0,-1,0));
+    const hits = raycaster.intersectObjects(platforms, false);
+    if (hits.length && !hits[0].object.userData.isKillBrick &&
+        hits[0].distance <= playerSize/2 + 0.05 && velocityY <= 0) {
+      player.position.y = hits[0].point.y + playerSize/2;
+      velocityY = 0;
+      grounded = true;
+      break;
+    }
+  }
+
+  if (grounded && keys[" "]) velocityY = jumpPower;
+
+  const playerSphere = new THREE.Sphere(player.position, playerSize*0.7);
+
+  for (const p of platforms) {
+    const box = new THREE.Box3().setFromObject(p);
+
+    if (p.userData.isKillBrick && playerSphere.intersectsBox(box)) {
+      player.position.copy(respawnPosition);
+      velocityY = 0;
+      return;
+    }
+
+    if (p.userData.isCheckpoint && !p.userData.activated &&
+        playerSphere.intersectsBox(box)) {
+      respawnPosition.copy(player.position);
+      respawnPosition.y += 1;
+      p.userData.activated = true;
+      p.material.color.set(0x00ff00);
+      console.log("Checkpoint activated at", respawnPosition);
+    }
+  }
+
+  if (player.position.y < -40) {
+    player.position.copy(respawnPosition);
+    velocityY = 0;
+  }
+  if (player.position.z < -17, stop = 0)
+     stop = 1;
+     console.log("67");
+          
+}
+
+/* ---------- camera ---------- */
+let angle = 0;
+function updateCamera() {
+  if (keys.arrowleft) angle += 0.03;
+  if (keys.arrowright) angle -= 0.03;
+
+  camera.position.lerp(
+    new THREE.Vector3(
+      player.position.x + Math.sin(angle) * 10,
+      player.position.y + 6,
+      player.position.z + Math.cos(angle) * 10
+    ), 0.1
+  );
+  camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
+}
+
+/* ---------- loop ---------- */
+function animate() {
+  requestAnimationFrame(animate);
+  updatePlayer();
+  updateCamera();
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ---------- resize ---------- */
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
