@@ -7,8 +7,26 @@
 <style>
   body { margin: 0; overflow: hidden; }
 </style>
+<style>
+
+  #ohioText {
+    position: fixed;
+    top: 70%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 50px;
+    font-weight: bold;
+    color: white;
+    background: rgba(0,0,0,0.7);
+    padding: 20px 40px;
+    border-radius: 10px;
+    display: none; 
+    z-index: 10;
+  }
+</style>
 </head>
 <body>
+<div id="ohioText">PURE AURA🥶🥶🥶</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152/build/three.min.js"></script>
 <script>
@@ -195,7 +213,7 @@ let velocityY = 0;
 const gravity = -0.03;
 const speed = 0.15;
 const jumpPower = 0.65;
-let stop = 1;
+let stop = false;
 
 
 function updatePlayer() {
@@ -269,12 +287,16 @@ function updatePlayer() {
   }
 
   if (player.position.y < -40) {
+    stop = false;
     player.position.copy(respawnPosition);
     velocityY = 0;
   }
-  if (player.position.z < -17, stop = 0)
-     stop = 1;
-     console.log("67");
+  if (player.position.z < -17 && !stop)  {
+     stop = true;
+     ohio();
+     console.log(player.position.z);
+  }
+  function ohio() { document.getElementById("ohioText").style.display = "block";};
           
 }
 
